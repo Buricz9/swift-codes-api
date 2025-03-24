@@ -8,11 +8,7 @@ CREATE TABLE swift.swift_codes (
                                    country_iso2 CHAR(2) NOT NULL,
                                    country_name VARCHAR(100) NOT NULL,
                                    is_headquarter BOOLEAN NOT NULL,
-                                   headquarter_swift_code VARCHAR(11),
-                                   CONSTRAINT fk_headquarter
-                                       FOREIGN KEY (headquarter_swift_code)
-                                           REFERENCES swift.swift_codes(swift_code)
-                                           ON DELETE SET NULL
+                                   headquarter_swift_code VARCHAR(11)
 );
 
 CREATE INDEX idx_swift_codes_country_iso2

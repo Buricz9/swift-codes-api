@@ -2,9 +2,15 @@ package main
 
 import (
 	"log"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
 	"swift-codes-api/internal/app"
 	"swift-codes-api/internal/config"
 	"swift-codes-api/internal/db"
+	"swift-codes-api/internal/handler"
+	"swift-codes-api/internal/repository"
+	"swift-codes-api/internal/service"
 )
 
 func main() {
@@ -23,5 +29,20 @@ func main() {
 		log.Fatalf("Migration error: %v", err)
 	}
 
-	log.Println("App initialized successfully!")
+	swiftRepo := repository.NewSwiftRepository(database)
+	swiftService := service.NewSwiftService(swiftRepo)
+	swiftHandler := handler.NewSwiftHandler(swiftService)
+
+	router := chi.NewRouter()
+
+	router.Get("/v1/swift-codes/{swiftCode}", swiftHandler.GetSwiftCode)
+	router.Get("/v1/swift-codes/country/{countryISO2}", swiftHandler.GetSwiftCodesByCountry)
+	router.Post("/v1/swift-codes", swiftHandler.CreateSwiftCode)
+	router.Delete("/v1/swift-codes/{swiftCode}", swiftHandler.DeleteSwiftCode)
+
+	log.Println("Starting HTTP server on :8080")
+	err = http.ListenAndServe(":8080", router)
+	if err != nil {
+		log.Fatalf("HTTP server error: %v", err)
+	}
 }
