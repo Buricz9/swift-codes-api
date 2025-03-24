@@ -9,11 +9,11 @@ import (
 )
 
 type SwiftHandler struct {
-	service service.SwiftService // <-- mała litera = pole 'service'
+	service service.SwiftService
 }
 
 func NewSwiftHandler(svc service.SwiftService) *SwiftHandler {
-	return &SwiftHandler{service: svc} // <-- pasuje do pola
+	return &SwiftHandler{service: svc}
 }
 
 func (h *SwiftHandler) GetSwiftCode(w http.ResponseWriter, r *http.Request) {
