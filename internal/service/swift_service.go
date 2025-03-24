@@ -8,6 +8,17 @@ import (
 type SwiftService interface {
 	GetSwiftCode(code string) (*repository.SwiftCode, error)
 	GetSwiftCodesByCountry(countryISO2 string) ([]repository.SwiftCode, error)
+	CreateSwiftCode(input CreateSwiftCodeInput) error
+}
+
+type CreateSwiftCodeInput struct {
+	SwiftCode            string
+	BankName             string
+	Address              string
+	CountryISO2          string
+	CountryName          string
+	IsHeadquarter        bool
+	HeadquarterSwiftCode *string
 }
 
 type swiftService struct {
@@ -44,4 +55,24 @@ func (s *swiftService) GetSwiftCodesByCountry(countryISO2 string) ([]repository.
 	}
 
 	return swiftCodes, nil
+}
+
+func (s *swiftService) CreateSwiftCode(input CreateSwiftCodeInput) error {
+	swift := repository.SwiftCode{
+		SwiftCode:     input.SwiftCode,
+		BankName:      input.BankName,
+		Address:       input.Address,
+		CountryISO2:   input.CountryISO2,
+		CountryName:   input.CountryName,
+		IsHeadquarter: input.IsHeadquarter,
+	}
+
+	if input.HeadquarterSwiftCode != nil {
+		swift.HeadquarterSwiftCode.String = *input.HeadquarterSwiftCode
+		swift.HeadquarterSwiftCode.Valid = true
+	} else {
+		swift.HeadquarterSwiftCode.Valid = false
+	}
+
+	return s.repo.CreateSwiftCode(swift)
 }

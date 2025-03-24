@@ -78,3 +78,39 @@ func (h *SwiftHandler) GetSwiftCodesByCountry(w http.ResponseWriter, r *http.Req
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
+
+func (h *SwiftHandler) CreateSwiftCode(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		SwiftCode            string  `json:"swiftCode"`
+		BankName             string  `json:"bankName"`
+		Address              string  `json:"address"`
+		CountryISO2          string  `json:"countryISO2"`
+		CountryName          string  `json:"countryName"`
+		IsHeadquarter        bool    `json:"isHeadquarter"`
+		HeadquarterSwiftCode *string `json:"headquarterSwiftCode"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	err = h.service.CreateSwiftCode(service.CreateSwiftCodeInput{
+		SwiftCode:            input.SwiftCode,
+		BankName:             input.BankName,
+		Address:              input.Address,
+		CountryISO2:          input.CountryISO2,
+		CountryName:          input.CountryName,
+		IsHeadquarter:        input.IsHeadquarter,
+		HeadquarterSwiftCode: input.HeadquarterSwiftCode,
+	})
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(`{"message":"Swift Code created successfully"}`))
+}

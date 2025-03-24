@@ -19,6 +19,7 @@ type SwiftCode struct {
 type SwiftRepository interface {
 	GetBySwiftCode(code string) (*SwiftCode, error)
 	GetByCountryISO2(countryISO2 string) ([]SwiftCode, error)
+	CreateSwiftCode(swift SwiftCode) error
 }
 
 type swiftRepository struct {
@@ -98,4 +99,28 @@ func (r *swiftRepository) GetByCountryISO2(countryISO2 string) ([]SwiftCode, err
 	}
 
 	return swiftCodes, nil
+}
+
+func (r *swiftRepository) CreateSwiftCode(swift SwiftCode) error {
+	query := `
+        INSERT INTO swift.swift_codes
+        (swift_code, bank_name, address, country_iso2, country_name, is_headquarter, headquarter_swift_code)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `
+
+	_, err := r.db.Exec(query,
+		swift.SwiftCode,
+		swift.BankName,
+		swift.Address,
+		swift.CountryISO2,
+		swift.CountryName,
+		swift.IsHeadquarter,
+		swift.HeadquarterSwiftCode,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to insert swift code: %w", err)
+	}
+
+	return nil
 }

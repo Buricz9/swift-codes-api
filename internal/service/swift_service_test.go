@@ -2,17 +2,15 @@ package service
 
 import (
 	"errors"
-	"testing"
-
-	"swift-codes-api/internal/repository"
-
 	"github.com/stretchr/testify/assert"
+	"swift-codes-api/internal/repository"
+	"testing"
 )
 
-// Mock dla SwiftRepository
 type mockSwiftRepo struct {
 	GetBySwiftCodeFunc   func(code string) (*repository.SwiftCode, error)
 	GetByCountryISO2Func func(countryISO2 string) ([]repository.SwiftCode, error)
+	CreateSwiftCodeFunc  func(swift repository.SwiftCode) error
 }
 
 func (m *mockSwiftRepo) GetBySwiftCode(code string) (*repository.SwiftCode, error) {
@@ -21,6 +19,61 @@ func (m *mockSwiftRepo) GetBySwiftCode(code string) (*repository.SwiftCode, erro
 
 func (m *mockSwiftRepo) GetByCountryISO2(countryISO2 string) ([]repository.SwiftCode, error) {
 	return m.GetByCountryISO2Func(countryISO2)
+}
+
+func (m *mockSwiftRepo) CreateSwiftCode(swift repository.SwiftCode) error {
+	return m.CreateSwiftCodeFunc(swift)
+}
+
+func TestCreateSwiftCode_Success(t *testing.T) {
+	mockRepo := &mockSwiftRepo{
+		CreateSwiftCodeFunc: func(swift repository.SwiftCode) error {
+			// Możesz tu zrobić dodatkowe sprawdzenia, np:
+			if swift.SwiftCode == "" {
+				return errors.New("swift code is required")
+			}
+			return nil
+		},
+	}
+
+	service := NewSwiftService(mockRepo)
+
+	input := CreateSwiftCodeInput{
+		SwiftCode:     "INGBPLPWXXX",
+		BankName:      "ING Bank Śląski",
+		Address:       "ul. Sokolska 34, Katowice",
+		CountryISO2:   "PL",
+		CountryName:   "Poland",
+		IsHeadquarter: true,
+	}
+
+	err := service.CreateSwiftCode(input)
+
+	assert.NoError(t, err)
+}
+
+func TestCreateSwiftCode_RepoError(t *testing.T) {
+	mockRepo := &mockSwiftRepo{
+		CreateSwiftCodeFunc: func(swift repository.SwiftCode) error {
+			return errors.New("repo error")
+		},
+	}
+
+	service := NewSwiftService(mockRepo)
+
+	input := CreateSwiftCodeInput{
+		SwiftCode:     "INGBPLPWXXX",
+		BankName:      "ING Bank Śląski",
+		Address:       "ul. Sokolska 34, Katowice",
+		CountryISO2:   "PL",
+		CountryName:   "Poland",
+		IsHeadquarter: true,
+	}
+
+	err := service.CreateSwiftCode(input)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "repo error")
 }
 
 func TestGetSwiftCode_Success(t *testing.T) {
