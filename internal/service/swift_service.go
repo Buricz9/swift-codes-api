@@ -3,6 +3,7 @@ package service
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"swift-codes-api/internal/repository"
 )
 
@@ -107,12 +108,15 @@ func (s *swiftService) GetSwiftCodesByCountry(countryISO2 string) (*CountrySwift
 }
 
 func (s *swiftService) CreateSwiftCode(input CreateSwiftCodeInput) error {
+	countryISO2 := strings.ToUpper(input.CountryISO2)
+	countryName := strings.ToUpper(input.CountryName)
+
 	swift := repository.SwiftCode{
 		SwiftCode:     input.SwiftCode,
 		BankName:      input.BankName,
 		Address:       input.Address,
-		CountryISO2:   input.CountryISO2,
-		CountryName:   input.CountryName,
+		CountryISO2:   countryISO2,
+		CountryName:   countryName,
 		IsHeadquarter: input.IsHeadquarter,
 	}
 
