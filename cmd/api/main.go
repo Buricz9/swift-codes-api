@@ -9,6 +9,7 @@ import (
 	"swift-codes-api/internal/config"
 	"swift-codes-api/internal/db"
 	"swift-codes-api/internal/handler"
+	"swift-codes-api/internal/importer"
 	"swift-codes-api/internal/repository"
 	"swift-codes-api/internal/service"
 )
@@ -33,8 +34,13 @@ func main() {
 	swiftService := service.NewSwiftService(swiftRepo)
 	swiftHandler := handler.NewSwiftHandler(swiftService)
 
-	router := chi.NewRouter()
+	// Wywołanie importu z pliku XLSX:
+	importFilePath := "swift_data.xlsx" // ścieżka do Twojego pliku
+	if err := importer.ImportSwiftCodesFromXLSX(importFilePath, swiftService); err != nil {
+		log.Printf("IMPORT ERROR: %v", err)
+	}
 
+	router := chi.NewRouter()
 	router.Get("/v1/swift-codes/{swiftCode}", swiftHandler.GetSwiftCode)
 	router.Get("/v1/swift-codes/country/{countryISO2}", swiftHandler.GetSwiftCodesByCountry)
 	router.Post("/v1/swift-codes", swiftHandler.CreateSwiftCode)
