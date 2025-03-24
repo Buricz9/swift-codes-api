@@ -19,6 +19,7 @@ type SwiftCode struct {
 type SwiftRepository interface {
 	GetBySwiftCode(code string) (*SwiftCode, error)
 	GetByCountryISO2(countryISO2 string) ([]SwiftCode, error)
+	GetBranchesByHeadquarterCode(hqCode string) ([]SwiftCode, error)
 	CreateSwiftCode(swift SwiftCode) error
 	DeleteBySwiftCode(code string) error
 }
@@ -92,11 +93,43 @@ func (r *swiftRepository) GetByCountryISO2(countryISO2 string) ([]SwiftCode, err
 		swiftCodes = append(swiftCodes, swift)
 	}
 
-	if len(swiftCodes) == 0 {
-		return nil, nil
+	return swiftCodes, nil
+}
+
+func (r *swiftRepository) GetBranchesByHeadquarterCode(hqCode string) ([]SwiftCode, error) {
+	query := `
+        SELECT id, swift_code, bank_name, address, country_iso2, country_name, is_headquarter, headquarter_swift_code
+        FROM swift.swift_codes
+        WHERE headquarter_swift_code = $1
+    `
+
+	rows, err := r.db.Query(query, hqCode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query branches: %w", err)
+	}
+	defer rows.Close()
+
+	var branches []SwiftCode
+	for rows.Next() {
+		var swift SwiftCode
+		err := rows.Scan(
+			&swift.ID,
+			&swift.SwiftCode,
+			&swift.BankName,
+			&swift.Address,
+			&swift.CountryISO2,
+			&swift.CountryName,
+			&swift.IsHeadquarter,
+			&swift.HeadquarterSwiftCode,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan branch: %w", err)
+		}
+
+		branches = append(branches, swift)
 	}
 
-	return swiftCodes, nil
+	return branches, nil
 }
 
 func (r *swiftRepository) CreateSwiftCode(swift SwiftCode) error {
