@@ -12,8 +12,8 @@ type SwiftHandler struct {
 	service service.SwiftService
 }
 
-func NewSwiftHandler(svc service.SwiftService) *SwiftHandler {
-	return &SwiftHandler{service: svc}
+func NewSwiftHandler(service service.SwiftService) *SwiftHandler {
+	return &SwiftHandler{service: service}
 }
 
 func (h *SwiftHandler) GetSwiftCode(w http.ResponseWriter, r *http.Request) {
@@ -39,6 +39,40 @@ func (h *SwiftHandler) GetSwiftCode(w http.ResponseWriter, r *http.Request) {
 		"countryName":          result.CountryName,
 		"isHeadquarter":        result.IsHeadquarter,
 		"headquarterSwiftCode": headquarterSwiftCode,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (h *SwiftHandler) GetSwiftCodesByCountry(w http.ResponseWriter, r *http.Request) {
+	countryISO2 := chi.URLParam(r, "countryISO2")
+
+	swiftCodes, err := h.service.GetSwiftCodesByCountry(countryISO2)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	var response []map[string]interface{}
+	for _, sc := range swiftCodes {
+		var headquarterSwiftCode *string
+		if sc.HeadquarterSwiftCode.Valid {
+			headquarterSwiftCode = &sc.HeadquarterSwiftCode.String
+		}
+
+		item := map[string]interface{}{
+			"id":                   sc.ID,
+			"swiftCode":            sc.SwiftCode,
+			"bankName":             sc.BankName,
+			"address":              sc.Address,
+			"countryISO2":          sc.CountryISO2,
+			"countryName":          sc.CountryName,
+			"isHeadquarter":        sc.IsHeadquarter,
+			"headquarterSwiftCode": headquarterSwiftCode,
+		}
+
+		response = append(response, item)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

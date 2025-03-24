@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-
 	"swift-codes-api/internal/app"
 	"swift-codes-api/internal/config"
 	"swift-codes-api/internal/db"
@@ -37,6 +36,7 @@ func main() {
 	router := chi.NewRouter()
 
 	router.Get("/v1/swift-codes/{swiftCode}", swiftHandler.GetSwiftCode)
+	router.Get("/v1/swift-codes/country/{countryISO2}", swiftHandler.GetSwiftCodesByCountry)
 
 	log.Println("Starting HTTP server on :8080")
 	err = http.ListenAndServe(":8080", router)

@@ -7,6 +7,7 @@ import (
 
 type SwiftService interface {
 	GetSwiftCode(code string) (*repository.SwiftCode, error)
+	GetSwiftCodesByCountry(countryISO2 string) ([]repository.SwiftCode, error)
 }
 
 type swiftService struct {
@@ -30,4 +31,17 @@ func (s *swiftService) GetSwiftCode(code string) (*repository.SwiftCode, error) 
 	}
 
 	return swiftCode, nil
+}
+
+func (s *swiftService) GetSwiftCodesByCountry(countryISO2 string) ([]repository.SwiftCode, error) {
+	swiftCodes, err := s.repo.GetByCountryISO2(countryISO2)
+	if err != nil {
+		return nil, fmt.Errorf("service error getting swift codes by country: %w", err)
+	}
+
+	if swiftCodes == nil {
+		return nil, fmt.Errorf("no swift codes found for country: %s", countryISO2)
+	}
+
+	return swiftCodes, nil
 }
