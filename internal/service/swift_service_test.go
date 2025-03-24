@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"errors"
 	"github.com/stretchr/testify/assert"
 	"swift-codes-api/internal/repository"
@@ -8,9 +9,10 @@ import (
 )
 
 type mockSwiftRepo struct {
-	GetBySwiftCodeFunc   func(code string) (*repository.SwiftCode, error)
-	GetByCountryISO2Func func(countryISO2 string) ([]repository.SwiftCode, error)
-	CreateSwiftCodeFunc  func(swift repository.SwiftCode) error
+	GetBySwiftCodeFunc    func(code string) (*repository.SwiftCode, error)
+	GetByCountryISO2Func  func(countryISO2 string) ([]repository.SwiftCode, error)
+	CreateSwiftCodeFunc   func(swift repository.SwiftCode) error
+	DeleteBySwiftCodeFunc func(code string) error
 }
 
 func (m *mockSwiftRepo) GetBySwiftCode(code string) (*repository.SwiftCode, error) {
@@ -23,6 +25,10 @@ func (m *mockSwiftRepo) GetByCountryISO2(countryISO2 string) ([]repository.Swift
 
 func (m *mockSwiftRepo) CreateSwiftCode(swift repository.SwiftCode) error {
 	return m.CreateSwiftCodeFunc(swift)
+}
+
+func (m *mockSwiftRepo) DeleteBySwiftCode(code string) error {
+	return m.DeleteBySwiftCodeFunc(code)
 }
 
 func TestCreateSwiftCode_Success(t *testing.T) {
@@ -172,4 +178,51 @@ func TestGetSwiftCodesByCountry_RepoError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "repo error")
+}
+
+func TestDeleteSwiftCode_Success(t *testing.T) {
+	mockRepo := &mockSwiftRepo{
+		DeleteBySwiftCodeFunc: func(code string) error {
+			if code == "DEUTDEFFXXX" {
+				return nil
+			}
+			return errors.New("unexpected code")
+		},
+	}
+
+	svc := NewSwiftService(mockRepo)
+
+	err := svc.DeleteSwiftCode("DEUTDEFFXXX")
+
+	assert.NoError(t, err)
+}
+
+func TestDeleteSwiftCode_NotFound(t *testing.T) {
+	mockRepo := &mockSwiftRepo{
+		DeleteBySwiftCodeFunc: func(code string) error {
+			return sql.ErrNoRows
+		},
+	}
+
+	svc := NewSwiftService(mockRepo)
+
+	err := svc.DeleteSwiftCode("UNKNOWN")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestDeleteSwiftCode_RepoError(t *testing.T) {
+	mockRepo := &mockSwiftRepo{
+		DeleteBySwiftCodeFunc: func(code string) error {
+			return errors.New("db failure")
+		},
+	}
+
+	svc := NewSwiftService(mockRepo)
+
+	err := svc.DeleteSwiftCode("FAILCODE")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "service error deleting swift code")
 }

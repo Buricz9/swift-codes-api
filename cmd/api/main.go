@@ -38,6 +38,7 @@ func main() {
 	router.Get("/v1/swift-codes/{swiftCode}", swiftHandler.GetSwiftCode)
 	router.Get("/v1/swift-codes/country/{countryISO2}", swiftHandler.GetSwiftCodesByCountry)
 	router.Post("/v1/swift-codes", swiftHandler.CreateSwiftCode)
+	router.Delete("/v1/swift-codes/{swiftCode}", swiftHandler.DeleteSwiftCode)
 
 	log.Println("Starting HTTP server on :8080")
 	err = http.ListenAndServe(":8080", router)

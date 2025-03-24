@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -113,4 +114,21 @@ func (h *SwiftHandler) CreateSwiftCode(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(`{"message":"Swift Code created successfully"}`))
+}
+
+func (h *SwiftHandler) DeleteSwiftCode(w http.ResponseWriter, r *http.Request) {
+	swiftCodeParam := chi.URLParam(r, "swiftCode")
+
+	err := h.service.DeleteSwiftCode(swiftCodeParam)
+	if err != nil {
+		if err.Error() == fmt.Sprintf("swift code not found: %s", swiftCodeParam) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message":"Swift Code deleted successfully"}`))
 }

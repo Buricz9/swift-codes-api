@@ -20,6 +20,7 @@ type SwiftRepository interface {
 	GetBySwiftCode(code string) (*SwiftCode, error)
 	GetByCountryISO2(countryISO2 string) ([]SwiftCode, error)
 	CreateSwiftCode(swift SwiftCode) error
+	DeleteBySwiftCode(code string) error
 }
 
 type swiftRepository struct {
@@ -36,7 +37,6 @@ func (r *swiftRepository) GetBySwiftCode(code string) (*SwiftCode, error) {
         FROM swift.swift_codes
         WHERE swift_code = $1
     `
-
 	row := r.db.QueryRow(query, code)
 
 	var swift SwiftCode
@@ -50,7 +50,6 @@ func (r *swiftRepository) GetBySwiftCode(code string) (*SwiftCode, error) {
 		&swift.IsHeadquarter,
 		&swift.HeadquarterSwiftCode,
 	)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -67,7 +66,6 @@ func (r *swiftRepository) GetByCountryISO2(countryISO2 string) ([]SwiftCode, err
         FROM swift.swift_codes
         WHERE country_iso2 = $1
     `
-
 	rows, err := r.db.Query(query, countryISO2)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query swift codes by country: %w", err)
@@ -107,7 +105,6 @@ func (r *swiftRepository) CreateSwiftCode(swift SwiftCode) error {
         (swift_code, bank_name, address, country_iso2, country_name, is_headquarter, headquarter_swift_code)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
     `
-
 	_, err := r.db.Exec(query,
 		swift.SwiftCode,
 		swift.BankName,
@@ -117,9 +114,30 @@ func (r *swiftRepository) CreateSwiftCode(swift SwiftCode) error {
 		swift.IsHeadquarter,
 		swift.HeadquarterSwiftCode,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to insert swift code: %w", err)
+	}
+
+	return nil
+}
+
+func (r *swiftRepository) DeleteBySwiftCode(code string) error {
+	query := `
+        DELETE FROM swift.swift_codes
+        WHERE swift_code = $1
+    `
+	res, err := r.db.Exec(query, code)
+	if err != nil {
+		return fmt.Errorf("failed to delete swift code: %w", err)
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
 	}
 
 	return nil

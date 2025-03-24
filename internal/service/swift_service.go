@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"fmt"
 	"swift-codes-api/internal/repository"
 )
@@ -9,6 +10,7 @@ type SwiftService interface {
 	GetSwiftCode(code string) (*repository.SwiftCode, error)
 	GetSwiftCodesByCountry(countryISO2 string) ([]repository.SwiftCode, error)
 	CreateSwiftCode(input CreateSwiftCodeInput) error
+	DeleteSwiftCode(code string) error
 }
 
 type CreateSwiftCodeInput struct {
@@ -75,4 +77,16 @@ func (s *swiftService) CreateSwiftCode(input CreateSwiftCodeInput) error {
 	}
 
 	return s.repo.CreateSwiftCode(swift)
+}
+
+func (s *swiftService) DeleteSwiftCode(code string) error {
+	err := s.repo.DeleteBySwiftCode(code)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("swift code not found: %s", code)
+		}
+		return fmt.Errorf("service error deleting swift code: %w", err)
+	}
+
+	return nil
 }
