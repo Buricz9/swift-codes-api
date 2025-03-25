@@ -7,13 +7,13 @@ import (
 )
 
 type SwiftCode struct {
-	ID                   int
-	SwiftCode            string
-	BankName             string
-	Address              string
-	CountryISO2          string
-	CountryName          string
-	IsHeadquarter        bool
+	ID                   int    `json:"-"`
+	SwiftCode            string `json:"swiftCode"`
+	BankName             string `json:"bankName"`
+	Address              string `json:"address"`
+	CountryISO2          string `json:"countryISO2"`
+	CountryName          string `json:"countryName"`
+	IsHeadquarter        bool   `json:"isHeadquarter"`
 	HeadquarterSwiftCode sql.NullString
 }
 
