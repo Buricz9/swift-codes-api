@@ -32,7 +32,7 @@ type SwiftCodeResponseHQ struct {
 	CountryISO2   string           `json:"countryISO2"`
 	CountryName   string           `json:"countryName"`
 	IsHeadquarter bool             `json:"isHeadquarter"`
-	Branches      []SwiftCodeBasic `json:"branches,omitempty"`
+	Branches      []SwiftCodeBasic `json:"branches"`
 }
 
 type SwiftCodeResponseBR struct {
