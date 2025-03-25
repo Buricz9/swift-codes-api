@@ -25,7 +25,7 @@ type CreateSwiftCodeInput struct {
 }
 
 type SwiftCodeWithBranches struct {
-	ID                   int                    `json:"id"`
+	ID                   int                    `json:"-"`
 	SwiftCode            string                 `json:"swiftCode"`
 	BankName             string                 `json:"bankName"`
 	Address              string                 `json:"address"`
