@@ -1,6 +1,21 @@
 version: '3.8'
 
 services:
+  app:
+    build: .
+    container_name: swift-codes-api
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: swiftuser
+      DB_PASSWORD: swiftpass
+      DB_NAME: swiftcodesdb
+
   db:
     image: postgres:16
     container_name: postgres-db
@@ -14,7 +29,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "swiftuser"]
+      test: ["CMD", "pg_isready", "-U", "swiftuser", "-d", "swiftcodesdb"]
       interval: 10s
       timeout: 5s
       retries: 5
