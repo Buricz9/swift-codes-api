@@ -22,12 +22,12 @@ Projekt REST API do zarządzania kodami SWIFT banków, stworzony w języku Go z 
    git clone https://github.com/Buricz9/swift-codes-api.git
    cd swift-codes-api
     ```
-Upewnij się, że Docker Desktop jest uruchomiony.
+2. **Upewnij się, że Docker Desktop jest uruchomiony.**
 
-Uruchom aplikację i bazę danych:
-```bash
-docker-compose up --build
-```
+3. **Uruchom aplikację i bazę danych:**
+   ```bash
+   docker-compose up --build
+   ```
 Aplikacja będzie dostępna pod adresem: http://localhost:8080
 
 ## Import danych
