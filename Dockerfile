@@ -13,5 +13,6 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /
 COPY --from=builder /app/swift-codes-api .
 COPY --from=builder /app/migrations ./migrations
+COPY swift_data.xlsx .
 EXPOSE 8080
 ENTRYPOINT ["./swift-codes-api"]
