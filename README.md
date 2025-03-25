@@ -28,6 +28,12 @@ Projekt REST API do zarządzania kodami SWIFT banków, stworzony w języku Go z 
    ```bash
    docker-compose up --build
    ```
+   Uwaga co prawda dodałem go.mod i go.sum do repo ale w przypadku błędu podczas odpalania przez dokera - jest to krok 3, zalecam usunięcie obu plików i wykonanie:
+      ```bash
+      go mod init swift-codes-api
+      go mod tidy
+      ```
+  
 Aplikacja będzie dostępna pod adresem: http://localhost:8080
 
 ## Import danych
