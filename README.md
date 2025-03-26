@@ -1,57 +1,57 @@
 # Swift Codes API
 
-Projekt REST API do zarządzania kodami SWIFT banków, stworzony w języku Go z wykorzystaniem PostgreSQL i konteneryzacji za pomocą Dockera. API umożliwia pobieranie informacji o bankach, wyszukiwanie kodów SWIFT po kraju, dodawanie nowych rekordów, a także ich usuwanie. Dane początkowe są importowane z pliku Excel (`swift_data.xlsx`) podczas uruchamiania aplikacji.
+A REST API project for managing banks' SWIFT codes, built in Go with PostgreSQL and containerized using Docker. The API allows retrieving bank information, searching SWIFT codes by country, adding new records, and deleting them. Initial data is imported from an Excel file (swift_data.xlsx) when the application starts.
 
-## Technologie
+## Technologies
 
 - Go 1.24
 - PostgreSQL 16
 - Docker + Docker Compose
 - Clean Architecture (handler → service → repository)
-- Testy jednostkowe i integracyjne
+- Unit and integration tests
 
-## Wymagania wstępne
-- Docker Desktop **(musi być uruchomiony przed komendą `docker-compose up`)**
+## Prerequisites
+- Docker Desktop **(must be running before executing `docker-compose up`)**
 - `docker-compose`
+  
+## How to Run the Project
 
-## Jak uruchomić projekt
-
-1. **Sklonuj repozytorium:**
+1. **Clone the repository:**
 
    ```bash
    git clone https://github.com/Buricz9/swift-codes-api.git
    cd swift-codes-api
     ```
-2. **Upewnij się, że Docker Desktop jest uruchomiony.**
+2. **Make sure Docker Desktop is running**
 
-3. **Uruchom aplikację i bazę danych:**
+3. **Start the application and the database:**
    ```bash
    docker-compose up --build
    ```
-   Uwaga co prawda dodałem go.mod i go.sum do repo ale w przypadku błędu podczas odpalania przez dokera - jest to krok 3, zalecam usunięcie obu plików i wykonanie:
+  Note: Although go.mod and go.sum are included in the repository, if an error occurs when running via Docker (step 3), it's recommended to delete both files and run:
       ```bash
       go mod init swift-codes-api
       go mod tidy
       ```
   
-Aplikacja będzie dostępna pod adresem: http://localhost:8080
+The application will be available at: http://localhost:8080
 
-## Import danych
-Podczas startu aplikacji następuje automatyczny import danych z pliku swift_data.xlsx. Plik znajduje się w katalogu głównym projektu. Dockerfile automatycznie kopiuje ten plik do kontenera.
+## Data Import
+Upon application startup, data is automatically imported from the swift_data.xlsx file. The file is located in the root directory of the project. The Dockerfile automatically copies this file into the container.
 
-## Testy
-Testy jednostkowe (mocki):
+## Tests
+Unit tests (with mocks):
 ```bash
 go test ./internal/service -v
 ```
-Testy integracyjne (uruchomiona aplikacja + baza danych):
+Integration tests (application + database running):
 ```bash
 go test -tags=integration ./internal/integration -v
 ```
-Przed uruchomieniem testów integracyjnych upewnij się, że aplikacja działa (docker-compose up) i nasłuchuje na localhost:8080.
-Testy jednostkowe domyśnie opróżniają baze danych przed wykonaniem się
+Before running integration tests, make sure the application is running (docker-compose up) and listening on localhost:8080.
+Integration tests automatically clear the database before execution.
 
-## Przykładowe endpointy
+## Example Endpoints
 ```bash
 GET /v1/swift-codes/BPKOPLPWXXX – pobierz dane HQ (z branchami)
 GET /v1/swift-codes/BPKOPLPWXYZ – pobierz dane branch
@@ -61,10 +61,10 @@ DELETE /v1/swift-codes/{code} – usuń kod SWIFT
 ```
 
 ## Feature, nie bug
-W przypadku próby dodania wpisu z kodem SWIFT, który już istnieje w bazie danych, aplikacja poinformuje o tym komunikatem:
+If you attempt to add a SWIFT code that already exists in the database, the application will notify you with the following messages:
 ```bash
 Updated existing swift_code=   (w konsoli)
 {"message":"Swift Code created successfully"} (przykładowo w postmana)
 ```
-Zachowanie to jest w pełni zamierzone i ma na celu zapewnienie unikalności kodów SWIFT. Aplikacja nie dopuszcza do tworzenia duplikatów - natomiast zawsze nadpisuje poprzendnie wrsje.
-Jeśli chcesz przetestować dodanie kodu ponownie, usuń istniejący wpis przed wysłaniem żądania `POST`.
+This behavior is intentional and ensures the uniqueness of SWIFT codes. The application does not allow duplicate entries – it always overwrites the previous version.
+If you want to test adding the same code again, first delete the existing entry before sending a POST request.
