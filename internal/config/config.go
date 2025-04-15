@@ -10,11 +10,12 @@ import (
 )
 
 func LoadConfig() db.Config {
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using system env variables")
+	if err := godotenv.Load(); err == nil {
+		log.Println("Loaded .env file for local environment")
 	}
 
-	port, err := strconv.Atoi(getEnv("DB_PORT", "5432"))
+	portStr := getEnv("DB_PORT", "5432")
+	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		log.Fatalf("Invalid DB_PORT: %v", err)
 	}

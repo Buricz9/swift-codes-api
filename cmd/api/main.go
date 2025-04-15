@@ -34,8 +34,7 @@ func main() {
 	swiftService := service.NewSwiftService(swiftRepo)
 	swiftHandler := handler.NewSwiftHandler(swiftService)
 
-	// Wywołanie importu z pliku XLSX:
-	importFilePath := "swift_data.xlsx" // ścieżka do Twojego pliku
+	importFilePath := "swift_data.xlsx"
 	if err := importer.ImportSwiftCodesFromXLSX(importFilePath, swiftService); err != nil {
 		log.Printf("IMPORT ERROR: %v", err)
 	}
