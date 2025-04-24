@@ -8,17 +8,16 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	_ "net/http/httptest"
 	"os"
-	"testing"
-	"time"
-
 	_ "swift-codes-api/internal/app"
 	"swift-codes-api/internal/config"
 	"swift-codes-api/internal/db"
 	"swift-codes-api/internal/handler"
 	"swift-codes-api/internal/repository"
 	"swift-codes-api/internal/service"
+	"testing"
 
 	"github.com/go-chi/chi/v5"
 	_ "github.com/lib/pq"
@@ -26,26 +25,24 @@ import (
 )
 
 var (
-	srv    *http.Server
-	dbConn *sql.DB
+	baseURL string
+	dbConn  *sql.DB
 )
 
 func TestMain(m *testing.M) {
-	// Load config and DB
 	cfg := config.LoadConfig()
 	var err error
-	dbConn, err = db.NewPostgresConnection(db.Config(cfg))
+	dbConn, err = db.NewPostgresConnection(context.Background(), cfg)
 	if err != nil {
 		log.Fatalf("Failed to connect to DB: %v", err)
 	}
 	defer dbConn.Close()
 
-	// Run migrations
-	if err := db.RunMigrations(dbConn, "migrations"); err != nil {
-		log.Fatalf("Migration failed: %v", err)
+	migrationsPath := "../../migrations"
+	if err := db.RunMigrations(dbConn, migrationsPath); err != nil {
+		log.Fatalf("Migration failed (%s): %v", migrationsPath, err)
 	}
 
-	// Setup router and server
 	repo := repository.NewSwiftRepository(dbConn)
 	svc := service.NewSwiftService(repo)
 	h := handler.NewSwiftHandler(svc)
@@ -55,35 +52,18 @@ func TestMain(m *testing.M) {
 	r.Post("/v1/swift-codes", h.CreateSwiftCode)
 	r.Delete("/v1/swift-codes/{swiftCode}", h.DeleteSwiftCode)
 
-	srv = &http.Server{Addr: ":8080", Handler: r}
-	// Start server
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server error: %v", err)
-		}
-	}()
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+	baseURL = ts.URL
 
-	// Wait for server to start
-	time.Sleep(2 * time.Second)
-
-	// Clear table
 	clearDB()
 
-	// Run tests
 	code := m.Run()
-
-	// Shutdown server
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("Server shutdown error: %v", err)
-	}
 
 	os.Exit(code)
 }
 
 func clearDB() {
-	// Delete all swift codes
 	dbConn.ExecContext(context.Background(), "DELETE FROM swift.swift_codes;")
 }
 
