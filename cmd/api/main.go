@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"github.com/go-chi/chi/v5/middleware"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"swift-codes-api/internal/app"
@@ -43,6 +45,14 @@ func main() {
 	}
 
 	router := chi.NewRouter()
+	router.Use(
+		middleware.RequestID,
+		middleware.RealIP,
+		middleware.Logger,
+		middleware.Recoverer,
+		middleware.Timeout(15*time.Second),
+	)
+
 	router.Get("/v1/swift-codes/{swiftCode}", swiftHandler.GetSwiftCode)
 	router.Get("/v1/swift-codes/country/{countryISO2}", swiftHandler.GetSwiftCodesByCountry)
 	router.Post("/v1/swift-codes", swiftHandler.CreateSwiftCode)
