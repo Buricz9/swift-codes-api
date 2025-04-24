@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -34,8 +35,10 @@ func main() {
 	swiftService := service.NewSwiftService(swiftRepo)
 	swiftHandler := handler.NewSwiftHandler(swiftService)
 
+	// Import initial data with context
+	ctx := context.Background()
 	importFilePath := "swift_data.xlsx"
-	if err := importer.ImportSwiftCodesFromXLSX(importFilePath, swiftService); err != nil {
+	if err := importer.ImportSwiftCodesFromXLSX(ctx, importFilePath, swiftService); err != nil {
 		log.Printf("IMPORT ERROR: %v", err)
 	}
 

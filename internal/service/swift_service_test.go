@@ -1,7 +1,9 @@
 package service
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"testing"
 
 	"swift-codes-api/internal/repository"
@@ -10,36 +12,36 @@ import (
 )
 
 type mockSwiftRepo struct {
-	GetBySwiftCodeFunc               func(code string) (*repository.SwiftCode, error)
-	GetByCountryISO2Func             func(countryISO2 string) ([]repository.SwiftCode, error)
-	GetBranchesByHeadquarterCodeFunc func(hqCode string) ([]repository.SwiftCode, error)
-	CreateSwiftCodeFunc              func(swift repository.SwiftCode) error
-	DeleteBySwiftCodeFunc            func(code string) error
+	GetBySwiftCodeFunc               func(ctx context.Context, code string) (*repository.SwiftCode, error)
+	GetByCountryISO2Func             func(ctx context.Context, countryISO2 string) ([]repository.SwiftCode, error)
+	GetBranchesByHeadquarterCodeFunc func(ctx context.Context, hqCode string) ([]repository.SwiftCode, error)
+	CreateSwiftCodeFunc              func(ctx context.Context, swift repository.SwiftCode) error
+	DeleteBySwiftCodeFunc            func(ctx context.Context, code string) error
 }
 
-func (m *mockSwiftRepo) GetBySwiftCode(code string) (*repository.SwiftCode, error) {
-	return m.GetBySwiftCodeFunc(code)
+func (m *mockSwiftRepo) GetBySwiftCode(ctx context.Context, code string) (*repository.SwiftCode, error) {
+	return m.GetBySwiftCodeFunc(ctx, code)
 }
 
-func (m *mockSwiftRepo) GetByCountryISO2(countryISO2 string) ([]repository.SwiftCode, error) {
-	return m.GetByCountryISO2Func(countryISO2)
+func (m *mockSwiftRepo) GetByCountryISO2(ctx context.Context, countryISO2 string) ([]repository.SwiftCode, error) {
+	return m.GetByCountryISO2Func(ctx, countryISO2)
 }
 
-func (m *mockSwiftRepo) GetBranchesByHeadquarterCode(hqCode string) ([]repository.SwiftCode, error) {
-	return m.GetBranchesByHeadquarterCodeFunc(hqCode)
+func (m *mockSwiftRepo) GetBranchesByHeadquarterCode(ctx context.Context, hqCode string) ([]repository.SwiftCode, error) {
+	return m.GetBranchesByHeadquarterCodeFunc(ctx, hqCode)
 }
 
-func (m *mockSwiftRepo) CreateSwiftCode(swift repository.SwiftCode) error {
-	return m.CreateSwiftCodeFunc(swift)
+func (m *mockSwiftRepo) CreateSwiftCode(ctx context.Context, swift repository.SwiftCode) error {
+	return m.CreateSwiftCodeFunc(ctx, swift)
 }
 
-func (m *mockSwiftRepo) DeleteBySwiftCode(code string) error {
-	return m.DeleteBySwiftCodeFunc(code)
+func (m *mockSwiftRepo) DeleteBySwiftCode(ctx context.Context, code string) error {
+	return m.DeleteBySwiftCodeFunc(ctx, code)
 }
 
 func TestGetSwiftCodeWithBranches_HQ(t *testing.T) {
 	mockRepo := &mockSwiftRepo{
-		GetBySwiftCodeFunc: func(code string) (*repository.SwiftCode, error) {
+		GetBySwiftCodeFunc: func(ctx context.Context, code string) (*repository.SwiftCode, error) {
 			return &repository.SwiftCode{
 				ID:            1,
 				SwiftCode:     "HQCODEXXX",
@@ -50,7 +52,7 @@ func TestGetSwiftCodeWithBranches_HQ(t *testing.T) {
 				IsHeadquarter: true,
 			}, nil
 		},
-		GetBranchesByHeadquarterCodeFunc: func(hqCode string) ([]repository.SwiftCode, error) {
+		GetBranchesByHeadquarterCodeFunc: func(ctx context.Context, hqCode string) ([]repository.SwiftCode, error) {
 			return []repository.SwiftCode{
 				{
 					ID:            2,
@@ -75,11 +77,11 @@ func TestGetSwiftCodeWithBranches_HQ(t *testing.T) {
 	}
 
 	svc := NewSwiftService(mockRepo)
-	result, err := svc.GetSwiftCodeWithBranches("HQCODEXXX")
+	ctx := context.Background()
+	result, err := svc.GetSwiftCodeWithBranches(ctx, "HQCODEXXX")
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 
-	// Oczekujemy, że typ odpowiedzi to SwiftCodeResponseHQ
 	hqResp, ok := result.(*SwiftCodeResponseHQ)
 	assert.True(t, ok, "Expected type *SwiftCodeResponseHQ for headquarter")
 	assert.True(t, hqResp.IsHeadquarter)
@@ -90,26 +92,26 @@ func TestGetSwiftCodeWithBranches_HQ(t *testing.T) {
 
 func TestGetSwiftCodeWithBranches_Branch(t *testing.T) {
 	mockRepo := &mockSwiftRepo{
-		GetBySwiftCodeFunc: func(code string) (*repository.SwiftCode, error) {
+		GetBySwiftCodeFunc: func(ctx context.Context, code string) (*repository.SwiftCode, error) {
 			return &repository.SwiftCode{
 				ID:                   4,
 				SwiftCode:            "BRANCHCODEXXX",
 				BankName:             "Branch Bank",
 				Address:              "Branch Address",
 				CountryISO2:          "PL",
-				CountryName:          "Poland", // ten element nie będzie zwracany w DTO dla branch
+				CountryName:          "Poland",
 				IsHeadquarter:        false,
 				HeadquarterSwiftCode: sql.NullString{String: "HQCODEXXX", Valid: true},
 			}, nil
 		},
-		// Nie używamy GetBranchesByHeadquarterCode dla branch
-		GetBranchesByHeadquarterCodeFunc: func(hqCode string) ([]repository.SwiftCode, error) {
+		GetBranchesByHeadquarterCodeFunc: func(ctx context.Context, hqCode string) ([]repository.SwiftCode, error) {
 			return nil, nil
 		},
 	}
 
 	svc := NewSwiftService(mockRepo)
-	result, err := svc.GetSwiftCodeWithBranches("BRANCHCODEXXX")
+	ctx := context.Background()
+	result, err := svc.GetSwiftCodeWithBranches(ctx, "BRANCHCODEXXX")
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 
@@ -120,24 +122,17 @@ func TestGetSwiftCodeWithBranches_Branch(t *testing.T) {
 
 func TestGetSwiftCodesByCountry_Success(t *testing.T) {
 	mockRepo := &mockSwiftRepo{
-		GetByCountryISO2Func: func(countryISO2 string) ([]repository.SwiftCode, error) {
+		GetByCountryISO2Func: func(ctx context.Context, countryISO2 string) ([]repository.SwiftCode, error) {
 			return []repository.SwiftCode{
-				{
-					SwiftCode:   "SWIFT1",
-					CountryISO2: "PL",
-					CountryName: "Poland",
-				},
-				{
-					SwiftCode:   "SWIFT2",
-					CountryISO2: "PL",
-					CountryName: "Poland",
-				},
+				{SwiftCode: "SWIFT1", CountryISO2: "PL", CountryName: "Poland"},
+				{SwiftCode: "SWIFT2", CountryISO2: "PL", CountryName: "Poland"},
 			}, nil
 		},
 	}
 
 	svc := NewSwiftService(mockRepo)
-	result, err := svc.GetSwiftCodesByCountry("PL")
+	ctx := context.Background()
+	result, err := svc.GetSwiftCodesByCountry(ctx, "PL")
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, "PL", result.CountryISO2)
@@ -147,26 +142,28 @@ func TestGetSwiftCodesByCountry_Success(t *testing.T) {
 
 func TestGetSwiftCodesByCountry_NotFound(t *testing.T) {
 	mockRepo := &mockSwiftRepo{
-		GetByCountryISO2Func: func(countryISO2 string) ([]repository.SwiftCode, error) {
+		GetByCountryISO2Func: func(ctx context.Context, countryISO2 string) ([]repository.SwiftCode, error) {
 			return []repository.SwiftCode{}, nil
 		},
 	}
 
 	svc := NewSwiftService(mockRepo)
-	result, err := svc.GetSwiftCodesByCountry("XX")
-	assert.Error(t, err)
+	ctx := context.Background()
+	result, err := svc.GetSwiftCodesByCountry(ctx, "XX")
 	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "no swift codes found")
+	assert.Error(t, err)
+	assert.True(t, errors.Is(err, ErrNoCountryCodes), "expected ErrNoCountryCodes sentinel")
 }
 
 func TestCreateSwiftCode_Success(t *testing.T) {
 	mockRepo := &mockSwiftRepo{
-		CreateSwiftCodeFunc: func(swift repository.SwiftCode) error {
+		CreateSwiftCodeFunc: func(ctx context.Context, swift repository.SwiftCode) error {
 			return nil
 		},
 	}
 
 	svc := NewSwiftService(mockRepo)
+	ctx := context.Background()
 	input := CreateSwiftCodeInput{
 		SwiftCode:     "NEWSWIFT",
 		BankName:      "Test Bank",
@@ -175,29 +172,31 @@ func TestCreateSwiftCode_Success(t *testing.T) {
 		CountryName:   "Poland",
 		IsHeadquarter: true,
 	}
-	err := svc.CreateSwiftCode(input)
+	err := svc.CreateSwiftCode(ctx, input)
 	assert.NoError(t, err)
 }
 
 func TestDeleteSwiftCode_Success(t *testing.T) {
 	mockRepo := &mockSwiftRepo{
-		DeleteBySwiftCodeFunc: func(code string) error {
+		DeleteBySwiftCodeFunc: func(ctx context.Context, code string) error {
 			return nil
 		},
 	}
 	svc := NewSwiftService(mockRepo)
-	err := svc.DeleteSwiftCode("NEWSWIFT")
+	ctx := context.Background()
+	err := svc.DeleteSwiftCode(ctx, "NEWSWIFT")
 	assert.NoError(t, err)
 }
 
 func TestDeleteSwiftCode_NotFound(t *testing.T) {
 	mockRepo := &mockSwiftRepo{
-		DeleteBySwiftCodeFunc: func(code string) error {
+		DeleteBySwiftCodeFunc: func(ctx context.Context, code string) error {
 			return sql.ErrNoRows
 		},
 	}
 	svc := NewSwiftService(mockRepo)
-	err := svc.DeleteSwiftCode("UNKNOWN")
+	ctx := context.Background()
+	err := svc.DeleteSwiftCode(ctx, "UNKNOWN")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not found")
+	assert.True(t, errors.Is(err, ErrNotFound), "expected ErrNotFound sentinel")
 }

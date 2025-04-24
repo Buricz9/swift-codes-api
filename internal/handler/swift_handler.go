@@ -2,7 +2,7 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -13,37 +13,48 @@ type SwiftHandler struct {
 	service service.SwiftService
 }
 
-func NewSwiftHandler(service service.SwiftService) *SwiftHandler {
-	return &SwiftHandler{service: service}
+func NewSwiftHandler(svc service.SwiftService) *SwiftHandler {
+	return &SwiftHandler{service: svc}
 }
 
 func (h *SwiftHandler) GetSwiftCode(w http.ResponseWriter, r *http.Request) {
-	swiftCodeParam := chi.URLParam(r, "swiftCode")
+	ctx := r.Context()
+	code := chi.URLParam(r, "swiftCode")
 
-	result, err := h.service.GetSwiftCodeWithBranches(swiftCodeParam)
+	result, err := h.service.GetSwiftCodeWithBranches(ctx, code)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		if errors.Is(err, service.ErrNotFound) {
+			writeJSONError(w, http.StatusNotFound, err.Error())
+		} else {
+			writeJSONError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	_ = json.NewEncoder(w).Encode(result)
 }
 
 func (h *SwiftHandler) GetSwiftCodesByCountry(w http.ResponseWriter, r *http.Request) {
-	countryISO2 := chi.URLParam(r, "countryISO2")
+	ctx := r.Context()
+	country := chi.URLParam(r, "countryISO2")
 
-	result, err := h.service.GetSwiftCodesByCountry(countryISO2)
+	result, err := h.service.GetSwiftCodesByCountry(ctx, country)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		if errors.Is(err, service.ErrNoCountryCodes) {
+			writeJSONError(w, http.StatusNotFound, err.Error())
+		} else {
+			writeJSONError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	_ = json.NewEncoder(w).Encode(result)
 }
 
 func (h *SwiftHandler) CreateSwiftCode(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var input struct {
 		SwiftCode            string  `json:"swiftCode"`
 		BankName             string  `json:"bankName"`
@@ -54,13 +65,12 @@ func (h *SwiftHandler) CreateSwiftCode(w http.ResponseWriter, r *http.Request) {
 		HeadquarterSwiftCode *string `json:"headquarterSwiftCode"`
 	}
 
-	err := json.NewDecoder(r.Body).Decode(&input)
-	if err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	err = h.service.CreateSwiftCode(service.CreateSwiftCodeInput{
+	err := h.service.CreateSwiftCode(ctx, service.CreateSwiftCodeInput{
 		SwiftCode:            input.SwiftCode,
 		BankName:             input.BankName,
 		Address:              input.Address,
@@ -69,29 +79,31 @@ func (h *SwiftHandler) CreateSwiftCode(w http.ResponseWriter, r *http.Request) {
 		IsHeadquarter:        input.IsHeadquarter,
 		HeadquarterSwiftCode: input.HeadquarterSwiftCode,
 	})
-
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(`{"message":"Swift Code created successfully"}`))
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": "Swift Code created successfully"})
 }
 
 func (h *SwiftHandler) DeleteSwiftCode(w http.ResponseWriter, r *http.Request) {
-	swiftCodeParam := chi.URLParam(r, "swiftCode")
+	ctx := r.Context()
+	code := chi.URLParam(r, "swiftCode")
 
-	err := h.service.DeleteSwiftCode(swiftCodeParam)
+	err := h.service.DeleteSwiftCode(ctx, code)
 	if err != nil {
-		if err.Error() == fmt.Sprintf("swift code not found: %s", swiftCodeParam) {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
+		if errors.Is(err, service.ErrNotFound) {
+			writeJSONError(w, http.StatusNotFound, err.Error())
+		} else {
+			writeJSONError(w, http.StatusInternalServerError, err.Error())
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message":"Swift Code deleted successfully"}`))
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": "Swift Code deleted successfully"})
 }

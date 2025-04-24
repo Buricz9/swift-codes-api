@@ -2,39 +2,89 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
+	_ "net/http/httptest"
 	"os"
 	"testing"
 	"time"
 
+	_ "swift-codes-api/internal/app"
+	"swift-codes-api/internal/config"
+	"swift-codes-api/internal/db"
+	"swift-codes-api/internal/handler"
+	"swift-codes-api/internal/repository"
+	"swift-codes-api/internal/service"
+
+	"github.com/go-chi/chi/v5"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 )
 
-const baseURL = "http://localhost:8080/v1/swift-codes"
-
-var db *sql.DB
+var (
+	srv    *http.Server
+	dbConn *sql.DB
+)
 
 func TestMain(m *testing.M) {
+	// Load config and DB
+	cfg := config.LoadConfig()
 	var err error
-	db, err = sql.Open("postgres", "host=localhost port=5432 user=swiftuser password=swiftpass dbname=swiftcodesdb sslmode=disable")
+	dbConn, err = db.NewPostgresConnection(db.Config(cfg))
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to connect to DB: %v", err)
 	}
-	defer db.Close()
+	defer dbConn.Close()
 
-	time.Sleep(3 * time.Second)
+	// Run migrations
+	if err := db.RunMigrations(dbConn, "migrations"); err != nil {
+		log.Fatalf("Migration failed: %v", err)
+	}
 
+	// Setup router and server
+	repo := repository.NewSwiftRepository(dbConn)
+	svc := service.NewSwiftService(repo)
+	h := handler.NewSwiftHandler(svc)
+	r := chi.NewRouter()
+	r.Get("/v1/swift-codes/{swiftCode}", h.GetSwiftCode)
+	r.Get("/v1/swift-codes/country/{countryISO2}", h.GetSwiftCodesByCountry)
+	r.Post("/v1/swift-codes", h.CreateSwiftCode)
+	r.Delete("/v1/swift-codes/{swiftCode}", h.DeleteSwiftCode)
+
+	srv = &http.Server{Addr: ":8080", Handler: r}
+	// Start server
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server error: %v", err)
+		}
+	}()
+
+	// Wait for server to start
+	time.Sleep(2 * time.Second)
+
+	// Clear table
 	clearDB()
 
-	os.Exit(m.Run())
+	// Run tests
+	code := m.Run()
+
+	// Shutdown server
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("Server shutdown error: %v", err)
+	}
+
+	os.Exit(code)
 }
 
 func clearDB() {
-	db.Exec(`DELETE FROM swift_codes;`)
+	// Delete all swift codes
+	dbConn.ExecContext(context.Background(), "DELETE FROM swift.swift_codes;")
 }
 
 func TestCreateSwiftCode(t *testing.T) {
@@ -48,7 +98,7 @@ func TestCreateSwiftCode(t *testing.T) {
 	}
 	body, _ := json.Marshal(payload)
 
-	resp, err := http.Post(baseURL, "application/json", bytes.NewBuffer(body))
+	resp, err := http.Post("http://localhost:8080/v1/swift-codes", "application/json", bytes.NewBuffer(body))
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -56,7 +106,7 @@ func TestCreateSwiftCode(t *testing.T) {
 }
 
 func TestGetSwiftCode_HQ(t *testing.T) {
-	resp, err := http.Get(baseURL + "/TESTCODE123")
+	resp, err := http.Get("http://localhost:8080/v1/swift-codes/TESTCODE123")
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -71,7 +121,7 @@ func TestGetSwiftCode_HQ(t *testing.T) {
 }
 
 func TestGetSwiftCodesByCountry(t *testing.T) {
-	resp, err := http.Get(baseURL + "/country/PL")
+	resp, err := http.Get("http://localhost:8080/v1/swift-codes/country/PL")
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -87,7 +137,7 @@ func TestGetSwiftCodesByCountry(t *testing.T) {
 }
 
 func TestDeleteSwiftCode(t *testing.T) {
-	req, err := http.NewRequest(http.MethodDelete, baseURL+"/TESTCODE123", nil)
+	req, err := http.NewRequest(http.MethodDelete, "http://localhost:8080/v1/swift-codes/TESTCODE123", nil)
 	assert.NoError(t, err)
 
 	client := &http.Client{}
@@ -99,7 +149,7 @@ func TestDeleteSwiftCode(t *testing.T) {
 }
 
 func TestGetSwiftCode_NotFound(t *testing.T) {
-	resp, err := http.Get(baseURL + "/DOESNOTEXIST")
+	resp, err := http.Get("http://localhost:8080/v1/swift-codes/DOESNOTEXIST")
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 

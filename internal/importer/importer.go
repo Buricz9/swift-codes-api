@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -8,7 +9,7 @@ import (
 	"swift-codes-api/internal/service"
 )
 
-func ImportSwiftCodesFromXLSX(filePath string, swiftSvc service.SwiftService) error {
+func ImportSwiftCodesFromXLSX(ctx context.Context, filePath string, swiftSvc service.SwiftService) error {
 	f, err := excelize.OpenFile(filePath)
 	if err != nil {
 		return fmt.Errorf("error opening xlsx file: %w", err)
@@ -53,7 +54,7 @@ func ImportSwiftCodesFromXLSX(filePath string, swiftSvc service.SwiftService) er
 			headquarterSwiftCode = &hq
 		}
 
-		err := swiftSvc.CreateSwiftCode(service.CreateSwiftCodeInput{
+		err := swiftSvc.CreateSwiftCode(ctx, service.CreateSwiftCodeInput{
 			SwiftCode:            swiftCode,
 			BankName:             bankName,
 			Address:              combinedAddress,
