@@ -157,6 +157,9 @@ func TestGetSwiftCodesByCountry_NotFound(t *testing.T) {
 
 func TestCreateSwiftCode_Success(t *testing.T) {
 	mockRepo := &mockSwiftRepo{
+		GetBySwiftCodeFunc: func(ctx context.Context, code string) (*repository.SwiftCode, error) {
+			return nil, nil
+		},
 		CreateSwiftCodeFunc: func(ctx context.Context, swift repository.SwiftCode) error {
 			return nil
 		},

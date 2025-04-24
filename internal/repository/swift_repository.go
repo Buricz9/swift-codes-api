@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 )
 
 type SwiftCode struct {
@@ -135,22 +134,12 @@ func (r *swiftRepository) GetBranchesByHeadquarterCode(ctx context.Context, hqCo
 }
 
 func (r *swiftRepository) CreateSwiftCode(ctx context.Context, swift SwiftCode) error {
-	existing, err := r.GetBySwiftCode(ctx, swift.SwiftCode)
-	if err != nil {
-		return fmt.Errorf("failed to check existing swift code: %w", err)
-	}
-
-	if existing != nil {
-		log.Printf("[SKIP] Swift code %s already exists, skipping insert", swift.SwiftCode)
-		return nil
-	}
-
 	const insertQuery = `
         INSERT INTO swift.swift_codes
-        (swift_code, bank_name, address, country_iso2, country_name, is_headquarter, headquarter_swift_code)
+          (swift_code, bank_name, address, country_iso2, country_name, is_headquarter, headquarter_swift_code)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
     `
-	_, err = r.db.ExecContext(ctx, insertQuery,
+	_, err := r.db.ExecContext(ctx, insertQuery,
 		swift.SwiftCode,
 		swift.BankName,
 		swift.Address,
@@ -160,10 +149,9 @@ func (r *swiftRepository) CreateSwiftCode(ctx context.Context, swift SwiftCode) 
 		swift.HeadquarterSwiftCode,
 	)
 	if err != nil {
+		// jeśli baza zwróci błąd unikalności, przekaż go dalej
 		return fmt.Errorf("failed to insert swift code: %w", err)
 	}
-
-	log.Printf("[INSERT] New swift code %s inserted", swift.SwiftCode)
 	return nil
 }
 

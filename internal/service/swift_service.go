@@ -10,8 +10,11 @@ import (
 	"swift-codes-api/internal/repository"
 )
 
-var ErrNotFound = errors.New("swift code not found")
-var ErrNoCountryCodes = errors.New("no swift codes for country")
+var (
+	ErrNotFound       = errors.New("swift code not found")
+	ErrNoCountryCodes = errors.New("no swift codes for country")
+	ErrAlreadyExists  = errors.New("swift code already exists")
+)
 
 type SwiftService interface {
 	GetSwiftCodeWithBranches(ctx context.Context, code string) (interface{}, error)
@@ -159,15 +162,23 @@ func (s *swiftService) CreateSwiftCode(ctx context.Context, input CreateSwiftCod
 		CountryName:   countryName,
 		IsHeadquarter: input.IsHeadquarter,
 	}
-
 	if input.HeadquarterSwiftCode != nil {
 		swift.HeadquarterSwiftCode.String = *input.HeadquarterSwiftCode
 		swift.HeadquarterSwiftCode.Valid = true
-	} else {
-		swift.HeadquarterSwiftCode.Valid = false
 	}
 
-	return s.repo.CreateSwiftCode(ctx, swift)
+	existing, err := s.repo.GetBySwiftCode(ctx, swift.SwiftCode)
+	if err != nil {
+		return fmt.Errorf("service error checking existing swift code: %w", err)
+	}
+	if existing != nil {
+		return ErrAlreadyExists
+	}
+
+	if err := s.repo.CreateSwiftCode(ctx, swift); err != nil {
+		return fmt.Errorf("service error creating swift code: %w", err)
+	}
+	return nil
 }
 
 func (s *swiftService) DeleteSwiftCode(ctx context.Context, code string) error {

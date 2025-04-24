@@ -80,7 +80,12 @@ func (h *SwiftHandler) CreateSwiftCode(w http.ResponseWriter, r *http.Request) {
 		HeadquarterSwiftCode: input.HeadquarterSwiftCode,
 	})
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		switch {
+		case errors.Is(err, service.ErrAlreadyExists):
+			writeJSONError(w, http.StatusConflict, err.Error())
+		default:
+			writeJSONError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 
